@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <string.h>
 
 //Function definitions
 void assemble(char* listingFilePath);
+void parseInstruction(char* instruction);
 
 int main(int argc, char** argv)
 {
@@ -30,8 +32,11 @@ void assemble(char* listingFilePath)
         printf("File not found.");
     }
 
-    char buffer[64];
-    int index;
+    char line[8][64] = {};
+    char buffer[64] = {};
+    int index = 0;
+    int lineIndex = 0;
+    int nextWhiteSpace = 1;
 
     //Iterate through the file, character by character
     while(1)
@@ -45,16 +50,25 @@ void assemble(char* listingFilePath)
 
         if(ch == ' ')
         {
-            index++;
+            if(nextWhiteSpace == 1)
+            {
+                //Add the buffer to the line array
+                lineIndex++;
+
+                index = 0;
+                nextWhiteSpace = 0;
+                memset(buffer, 0, sizeof buffer);
+            }
+        }
+        else if(ch == '\n')
+        {
+            lineIndex = 0;
         }
         else
         {
+            nextWhiteSpace = 1;
             buffer[index] = ch;
-        }
-
-        if(ch != ' ')
-        {
-            printf("%c",ch);
+            index++;
         }
         
 
@@ -67,4 +81,9 @@ void assemble(char* listingFilePath)
         }
         */
     }
+}
+
+void parseInstruction(char* instruction)
+{
+    printf("%s\n", instruction);
 }
