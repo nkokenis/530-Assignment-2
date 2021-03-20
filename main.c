@@ -32,11 +32,18 @@ void assemble(char* listingFilePath)
         printf("File not found.");
     }
 
-    char line[8][64] = {};
-    char buffer[64] = {};
+    char address[4] = {};
+    char label[16] = {};
+    char instruction[16] = {};
+    char operand[64] = {};
+    char objcode[8] = {};
+
+    int numLines = 0;
+
     int index = 0;
-    int lineIndex = 0;
-    int nextWhiteSpace = 1;
+    int len = 0;
+
+    int newWhiteSpace = 0;
 
     //Iterate through the file, character by character
     while(1)
@@ -45,41 +52,61 @@ void assemble(char* listingFilePath)
         char ch = fgetc(listingFile);
         if(feof(listingFile))
         {
+            printf("%d",index);
             break;
         }
 
         if(ch == ' ')
         {
-            if(nextWhiteSpace == 1)
+            if(newWhiteSpace == 0)
             {
-                //Add the buffer to the line array
-                lineIndex++;
-
-                index = 0;
-                nextWhiteSpace = 0;
-                memset(buffer, 0, sizeof buffer);
+                printf("%d",index);
+                len = 0;
+                index++;
+                newWhiteSpace = 1;
             }
         }
         else if(ch == '\n')
         {
-            lineIndex = 0;
+            printf("%d\n",index);
+            numLines++;
+            len = 0;
+            index = 0;
+            newWhiteSpace = 0;
         }
         else
         {
-            nextWhiteSpace = 1;
-            buffer[index] = ch;
-            index++;
+            if(index == 0)
+            {
+                address[len] = ch;
+                newWhiteSpace = 0;
+                len++;
+            }
+            else if(index == 1)
+            {
+                label[len] = ch;
+                newWhiteSpace = 0;
+                len++;
+            }
+            else if(index == 2)
+            {
+                instruction[len] = ch;
+                newWhiteSpace = 0;
+                len++;
+            }
+            else if(index == 3)
+            {
+                operand[len] = ch;
+                newWhiteSpace = 0;
+                len++;
+            }
+            else if(index == 4)
+            {
+                objcode[len] = ch;
+                newWhiteSpace = 0;
+                len++;
+            }
         }
-        
-
-        /*
-        char buffer[30];
-        //"%[^\n]"
-        while(fscanf(listingFile, " ", buffer) != EOF)
-        {
-            printf("%s", buffer);
-        }
-        */
     }
 }
 
