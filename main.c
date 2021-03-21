@@ -7,6 +7,7 @@ int numLines = 0;
 
 //Function declarations
 struct LineData* assemble(char* listingFilePath);
+void buildSymTab(struct LineData* data);
 void parseInstruction(char* instruction);
 
 struct LineData
@@ -32,7 +33,10 @@ int main(int argc, char** argv)
     for(int i = 1; i < argc; i++)
     {
         struct LineData* data = assemble(argv[i]);
-        //Call other functions after assembling
+        //Call the build symbol table function
+        buildSymTab(data);
+        //Build all the records
+        //Output .obj file
         free(data);
     }
 
@@ -125,6 +129,36 @@ struct LineData* assemble(char* listingFilePath)
         }
     }
     return data;
+}
+
+void buildSymTab(struct LineData* data)
+{
+    char symbol[16] = {};
+    int symbolIndex = 0;
+    for(int i = 0; i < sizeof(data); i++)
+    {
+        if(strcmp(data[i].instruction,"EXTDEF") == 0)
+        {
+            //Found EXTDEF statement
+            for(int x = 0; x < sizeof(data[i].operand); x++)
+            {
+                char ch = data[i].operand[x];
+                if(ch == ',')
+                {
+                    //Parse symbol name
+                    symbolIndex = 0;
+                    parseInstruction(symbol);
+                    memset(symbol, 0, sizeof(symbol));
+                }
+                else
+                {
+                    //Fill the array character by character
+                    symbol[symbolIndex] = ch;
+                    symbolIndex++;
+                }
+            }
+        }
+    }
 }
 
 void parseInstruction(char* instruction)
