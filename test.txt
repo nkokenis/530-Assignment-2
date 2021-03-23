@@ -1,3 +1,4 @@
 0234    PROGC    START    LISTA-LISTC    3F2356
-0001    P        END      LISTA+10       8C5D00
+0001    PL       END      LISTA+10       8C5D00
 400C             EXTDEF   LISTQ,LISTE
+00FF             RSUB

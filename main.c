@@ -17,6 +17,7 @@ struct LineData
     char instruction[16];
     char operand[64];
     char objcode[8];
+    char line[256];
     int lineNumber;
 };
 
@@ -57,6 +58,8 @@ struct LineData* assemble(char* listingFilePath)
     int index = 0;
     int len = 0;
     int lineNum = 0;
+    int lnIndex = 0;
+    int newWhiteSpace = 0;
 
     while(1)
     {
@@ -86,10 +89,13 @@ struct LineData* assemble(char* listingFilePath)
 
         if(ch == ' ')
         {
-            printf("%d",index);
-            len = 0;
-            index++;
-            while(fgetc(listingFile) == ' ');
+            if(newWhiteSpace == 0)
+            {
+                printf("%d",index);
+                len = 0;
+                index++;
+                newWhiteSpace = 1;
+            }
         }
         else if(ch == '\n')
         {
@@ -98,9 +104,14 @@ struct LineData* assemble(char* listingFilePath)
             lineNum++;
             len = 0;
             index = 0;
+            lnIndex = 0;
+            newWhiteSpace = 0;
         }
         else
         {
+            data[lineNum].line[lnIndex] = ch;
+            lnIndex++;
+
             if(index == 0)
             {
                 data[lineNum].address[len] = ch;
@@ -126,6 +137,8 @@ struct LineData* assemble(char* listingFilePath)
                 data[lineNum].objcode[len] = ch;
                 len++;
             }
+
+            newWhiteSpace = 0;
         }
     }
     return data;
@@ -133,16 +146,17 @@ struct LineData* assemble(char* listingFilePath)
 
 void buildSymTab(struct LineData* data)
 {
+    printf("\n");
     char symbol[16] = {};
     int symbolIndex = 0;
     for(int i = 0; i < sizeof(data); i++)
     {
-        if(strcmp(data[i].instruction,"EXTDEF") == 0)
+        if(strstr(data[i].line,"EXTDEF") != NULL)
         {
-            //Found EXTDEF statement
-            for(int x = 0; x < sizeof(data[i].operand); x++)
+            printf("%d",sizeof(data[i].line));
+            for(int x = 10; x < sizeof(data[i].line); x++)
             {
-                char ch = data[i].operand[x];
+                char ch = data[i].line[x];
                 if(ch == ',')
                 {
                     //Parse symbol name
