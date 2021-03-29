@@ -2,12 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-//Global variables
-int gNumLines;
-
 //Function declarations
-char** assemble(char* listingFilePath);
-void buildSymTab(char** data);
+void assemble(char* listingFilePath);
 void parseInstruction(char* instruction);
 
 int main(int argc, char** argv)
@@ -21,22 +17,20 @@ int main(int argc, char** argv)
     //Parses through each file
     for(int i = 1; i < argc; i++)
     {
-        char** data = assemble(argv[i]);
-        buildSymTab(data);
-        free(data);
+        assemble(argv[i]);
     }
 
     return 0;
 }
 
-char** assemble(char* listingFilePath)
+void assemble(char* listingFilePath)
 {
     //Creates a FILE pointer using the file path provided
     FILE* listingFile = fopen(listingFilePath,"r");
     if(listingFile == NULL)
     {
         printf("File not found.");
-        return NULL;
+        return;
     }
 
     //Keeps track of the number of lines in the file
@@ -56,7 +50,6 @@ char** assemble(char* listingFilePath)
             numLines++;
         }
     }
-    gNumLines = numLines;
     rewind(listingFile);
 
     //Keeps track of the index as we iterate thru the line
@@ -97,6 +90,7 @@ char** assemble(char* listingFilePath)
     }
     rewind(listingFile);
 
+    //Fills the array
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         for(index = 0; index < rowSize[lineNum]; index++)
@@ -113,49 +107,39 @@ char** assemble(char* listingFilePath)
             else
             {
                 data[lineNum][index] = ch;
-                printf("%c ", data[lineNum][index]);
+                printf("%c", data[lineNum][index]);
             }
         }
     }
-    return data;
-}
 
-void buildSymTab(char** data)
-{
-    //char symbol[16] = {};
-    //int symbolIndex = 0;
-    for(int i = 0; i < gNumLines; i++)
+    //Find all symbols within the file
+    for(lineNum = 0; lineNum < numLines; lineNum++)
     {
-        if(strstr(data[i],"EXTDEF") != NULL)
+        if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
+           strstr(data[lineNum],"RESW") != NULL || strstr(data[lineNum],"RESB") != NULL ||
+           strstr(data[lineNum],"EQU") != NULL)
         {
-            printf("\nFOUND EXTDEF\n");
-            /*
-            char* src = data[i];
-            char* dst = strstr(data[i],"EXTDEF");
-            int pos = dst - src;
-            pos += 6;
-            while(pos < sizeof(data[i]))
+            printf("\nAddress of symbol ");
+            //Gets the label
+            for(index = 8; index < rowSize[lineNum]; index++)
             {
-                char ch = data[i][pos];
-                if(ch != ' ')
+                char ch = data[lineNum][index];
+                if(ch == ' ')
                 {
-                    if(ch == ',')
-                    {
-                        //Parse symbol name
-                        symbolIndex = 0;
-                        parseInstruction(symbol);
-                        memset(symbol, 0, sizeof(symbol));
-                    }
-                    else
-                    {
-                        //Fill the array character by character
-                        symbol[symbolIndex] = ch;
-                        symbolIndex++;
-                    }
+                    break;
                 }
-                pos++;
+                else
+                {
+                    printf("%c", ch);
+                }
             }
-            */
+            printf(" is ");
+            //Gets the address
+            for(index = 0; index < 4; index++)
+            {
+                char ch = data[lineNum][index];
+                printf("%c", ch);
+            }
         }
     }
 }
