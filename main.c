@@ -3,174 +3,159 @@
 #include <string.h>
 
 //Global variables
-int numLines = 0;
+int gNumLines;
 
 //Function declarations
-struct LineData* assemble(char* listingFilePath);
-void buildSymTab(struct LineData* data);
+char** assemble(char* listingFilePath);
+void buildSymTab(char** data);
 void parseInstruction(char* instruction);
-
-struct LineData
-{
-    char address[4];
-    char label[16];
-    char instruction[16];
-    char operand[64];
-    char objcode[8];
-    char line[256];
-    int lineNumber;
-};
-
 
 int main(int argc, char** argv)
 {
     if(argc < 2)
     {
-        //There is less than 1 argument
         printf("Program needs at least one argument.\n");
         return 0;
     }
 
+    //Parses through each file
     for(int i = 1; i < argc; i++)
     {
-        struct LineData* data = assemble(argv[i]);
-        //Call the build symbol table function
+        char** data = assemble(argv[i]);
         buildSymTab(data);
-        //Build all the records
-        //Output .obj file
         free(data);
     }
 
     return 0;
 }
 
-struct LineData* assemble(char* listingFilePath)
+char** assemble(char* listingFilePath)
 {
-    //Create a FILE pointer using the file path provided
+    //Creates a FILE pointer using the file path provided
     FILE* listingFile = fopen(listingFilePath,"r");
     if(listingFile == NULL)
     {
-        //The file does not exist or couldn't be found
         printf("File not found.");
         return NULL;
     }
 
-    int index = 0;
-    int len = 0;
-    int lineNum = 0;
-    int lnIndex = 0;
-    int newWhiteSpace = 0;
+    //Keeps track of the number of lines in the file
+    int numLines = 0;
 
+    //Gets the number of lines in the file
     while(1)
     {
         char ch = fgetc(listingFile);
         if(feof(listingFile))
         {
+            numLines++;
             break;
         }
-        else
+        if(ch == '\n')
         {
             numLines++;
         }
     }
-    struct LineData* data = malloc(sizeof(struct LineData) * numLines);
+    gNumLines = numLines;
     rewind(listingFile);
 
-    //Iterate through the file, character by character
+    //Keeps track of the index as we iterate thru the line
+    int index = 0;
+
+    //Keeps track of the line number we are currently on
+    int lineNum = 0;
+
+    //Creates a dynamically allocated 2d array to store the line contents
+    char** data = malloc(sizeof(char*) * numLines);
+
+    //Creates a 1d array to store the size of each row in our 2d array
+    int rowSize[numLines];
+
+    //Dynamically allocates our 2d array by creating a "jagged" array
     while(1)
     {
-        //Get the next character in the listing file
         char ch = fgetc(listingFile);
         if(feof(listingFile))
         {
-            printf("%d",index);
+            data[lineNum] = (char*)malloc(sizeof(char) * (index + 1));
+            rowSize[lineNum] = index + 1;
+            index = 0;
+            lineNum++;
             break;
         }
-
-        if(ch == ' ')
+        if(ch == '\n')
         {
-            if(newWhiteSpace == 0)
-            {
-                printf("%d",index);
-                len = 0;
-                index++;
-                newWhiteSpace = 1;
-            }
-        }
-        else if(ch == '\n')
-        {
-            printf("%d\n",index);
-            data[lineNum].lineNumber = lineNum;
-            lineNum++;
-            len = 0;
+            data[lineNum] = (char*)malloc(sizeof(char) * (index + 1));
+            rowSize[lineNum] = index + 1;
             index = 0;
-            lnIndex = 0;
-            newWhiteSpace = 0;
+            lineNum++;
         }
         else
         {
-            data[lineNum].line[lnIndex] = ch;
-            lnIndex++;
+            index++;
+        }
+    }
+    rewind(listingFile);
 
-            if(index == 0)
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        for(index = 0; index < rowSize[lineNum]; index++)
+        {
+            char ch = fgetc(listingFile);
+            if(feof(listingFile))
             {
-                data[lineNum].address[len] = ch;
-                len++;
+                break;
             }
-            else if(index == 1)
+            if(ch == '\n')
             {
-                data[lineNum].label[len] = ch;
-                len++;
+                printf("\n");
             }
-            else if(index == 2)
+            else
             {
-                data[lineNum].instruction[len] = ch;
-                len++;
+                data[lineNum][index] = ch;
+                printf("%c ", data[lineNum][index]);
             }
-            else if(index == 3)
-            {
-                data[lineNum].operand[len] = ch;
-                len++;
-            }
-            else if(index == 4)
-            {
-                data[lineNum].objcode[len] = ch;
-                len++;
-            }
-
-            newWhiteSpace = 0;
         }
     }
     return data;
 }
 
-void buildSymTab(struct LineData* data)
+void buildSymTab(char** data)
 {
-    printf("\n");
-    char symbol[16] = {};
-    int symbolIndex = 0;
-    for(int i = 0; i < sizeof(data); i++)
+    //char symbol[16] = {};
+    //int symbolIndex = 0;
+    for(int i = 0; i < gNumLines; i++)
     {
-        if(strstr(data[i].line,"EXTDEF") != NULL)
+        if(strstr(data[i],"EXTDEF") != NULL)
         {
-            printf("%d",sizeof(data[i].line));
-            for(int x = 10; x < sizeof(data[i].line); x++)
+            printf("\nFOUND EXTDEF\n");
+            /*
+            char* src = data[i];
+            char* dst = strstr(data[i],"EXTDEF");
+            int pos = dst - src;
+            pos += 6;
+            while(pos < sizeof(data[i]))
             {
-                char ch = data[i].line[x];
-                if(ch == ',')
+                char ch = data[i][pos];
+                if(ch != ' ')
                 {
-                    //Parse symbol name
-                    symbolIndex = 0;
-                    parseInstruction(symbol);
-                    memset(symbol, 0, sizeof(symbol));
+                    if(ch == ',')
+                    {
+                        //Parse symbol name
+                        symbolIndex = 0;
+                        parseInstruction(symbol);
+                        memset(symbol, 0, sizeof(symbol));
+                    }
+                    else
+                    {
+                        //Fill the array character by character
+                        symbol[symbolIndex] = ch;
+                        symbolIndex++;
+                    }
                 }
-                else
-                {
-                    //Fill the array character by character
-                    symbol[symbolIndex] = ch;
-                    symbolIndex++;
-                }
+                pos++;
             }
+            */
         }
     }
 }
