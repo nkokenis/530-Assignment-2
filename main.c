@@ -62,7 +62,7 @@ void assemble(char* listingFilePath)
     char** data = malloc(sizeof(char*) * numLines);
 
     //Creates a 1d array to store the size of each row in our 2d array
-    int rowSize[numLines];
+    int* rowSize = malloc(sizeof(int) * numLines);
 
     //Dynamically allocates our 2d array by creating a "jagged" array
     while(1)
@@ -112,6 +112,96 @@ void assemble(char* listingFilePath)
         }
     }
 
+    //Keeps track of the number of externally defined symbols
+    int extDefNumLines = 0;
+
+    //Keeps track of the position of EXTDEF
+    int pos = 0;
+
+    //Keeps track of which line in data[][] EXTDEF is found
+    int dataLine = 0;
+
+    //Gets the number of externally defined symbols
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        if(strstr(data[lineNum],"EXTDEF") != NULL)
+        {
+            dataLine = lineNum;
+            char* src = data[lineNum];
+            char* dst = strstr(src, "EXTDEF");
+            pos = dst - src;
+            pos += 6;
+            for(index = pos; index < rowSize[lineNum]; index++)
+            {
+                char ch = data[lineNum][index];
+                if(ch != ' ')
+                {
+                    if(ch == ',' || (index == rowSize[lineNum] - 1))
+                    {
+                        extDefNumLines++;
+                    }
+                }
+            }
+        }
+    }
+
+    //Keeps track of the index as we iterate thru the externally defined symbols
+    int extDefIndex = 0;
+
+    //Keeps track of the symbol we're currently on
+    int extDefLineNum = 0;
+
+    //Creates a dynamically allocated 2d array to store the externally defined symbols
+    char** extDefSymbols = malloc(sizeof(char*) * extDefNumLines);
+
+    //Creates a 1d array to store the size of each row in our 2d array
+    int* extDefRowSize = malloc(sizeof(int) * extDefNumLines);
+
+    //Finds externally defined symbol names and allocates space in another 2d jagged array
+    for(index = pos; index < rowSize[dataLine]; index++)
+    {
+        char ch = data[dataLine][index];
+        if(ch != ' ')
+        {
+            if(ch == ',' || (index == rowSize[dataLine] - 1))
+            {
+                extDefSymbols[extDefLineNum] = (char*)malloc(sizeof(char) * (extDefIndex + 1));
+                extDefRowSize[extDefLineNum] = extDefIndex + 1;
+                extDefIndex = 0;
+                extDefLineNum++;
+            }
+            else
+            {
+                extDefIndex++;
+            }
+        }
+    }
+
+    extDefIndex = 0;
+    extDefLineNum = 0;
+
+    //Fills the array
+    printf("\nExternally defined symbols are: ");
+    for(index = pos; index < rowSize[dataLine]; index++)
+    {
+        char ch = data[dataLine][index];
+        if(ch != ' ')
+        {
+            if(ch == ',' || (index == rowSize[dataLine] - 1))
+            {
+                extDefIndex = 0;
+                extDefLineNum++;
+                printf(", ");
+            }
+            else
+            {
+                extDefSymbols[extDefLineNum][extDefIndex] = ch;
+                printf("%c",extDefSymbols[extDefLineNum][extDefIndex]);
+                extDefIndex++;
+            }
+        }
+    }
+
     //Find all symbols within the file
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
@@ -119,7 +209,7 @@ void assemble(char* listingFilePath)
            strstr(data[lineNum],"RESW") != NULL || strstr(data[lineNum],"RESB") != NULL ||
            strstr(data[lineNum],"EQU") != NULL)
         {
-            printf("\nAddress of symbol ");
+            printf("\nRelative address of symbol ");
             //Gets the label
             for(index = 8; index < rowSize[lineNum]; index++)
             {
