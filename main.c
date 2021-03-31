@@ -111,6 +111,7 @@ void assemble(char* listingFilePath)
             }
         }
     }
+    printf("\n");
 
     //Keeps track of the number of externally defined symbols
     int extDefNumLines = 0;
@@ -181,7 +182,7 @@ void assemble(char* listingFilePath)
     extDefLineNum = 0;
 
     //Fills the array
-    printf("\nExternally defined symbols are: ");
+    printf("\nExternally defined symbols are:\n");
     for(index = pos; index < rowSize[dataLine]; index++)
     {
         char ch = data[dataLine][index];
@@ -191,7 +192,7 @@ void assemble(char* listingFilePath)
             {
                 extDefIndex = 0;
                 extDefLineNum++;
-                printf(", ");
+                printf("\n");
             }
             else
             {
@@ -202,33 +203,39 @@ void assemble(char* listingFilePath)
         }
     }
 
-    //Find all symbols within the file
+    //Find all external symbols within the file
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
            strstr(data[lineNum],"RESW") != NULL || strstr(data[lineNum],"RESB") != NULL ||
            strstr(data[lineNum],"EQU") != NULL)
         {
-            printf("\nRelative address of symbol ");
-            //Gets the label
-            for(index = 8; index < rowSize[lineNum]; index++)
+            for(extDefLineNum = 0; extDefLineNum < extDefNumLines; extDefLineNum++)
             {
-                char ch = data[lineNum][index];
-                if(ch == ' ')
+                if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
-                    break;
+                    printf("\nRelative address of external symbol ");
+                    //Gets the label
+                    for(index = 8; index < rowSize[lineNum]; index++)
+                    {
+                        char ch = data[lineNum][index];
+                        if(ch == ' ')
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            printf("%c", ch);
+                        }
+                    }
+                    printf(" is ");
+                    //Gets the address
+                    for(index = 0; index < 4; index++)
+                    {
+                        char ch = data[lineNum][index];
+                        printf("%c", ch);
+                    }
                 }
-                else
-                {
-                    printf("%c", ch);
-                }
-            }
-            printf(" is ");
-            //Gets the address
-            for(index = 0; index < 4; index++)
-            {
-                char ch = data[lineNum][index];
-                printf("%c", ch);
             }
         }
     }
