@@ -14,7 +14,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    //Parses through each file
+    //Creates the ESTAB for each file in the argument list
+    printf("-----------------------------\n            ESTAB\n-----------------------------\n");
     for(int i = 1; i < argc; i++)
     {
         assemble(argv[i]);
@@ -52,19 +53,19 @@ void assemble(char* listingFilePath)
     }
     rewind(listingFile);
 
-    //Keeps track of the index as we iterate thru the line
-    int index = 0;
-
-    //Keeps track of the line number we are currently on
+    //Keeps track of the line number as we iterate through the file
     int lineNum = 0;
+
+    //Keeps track of the index as we iterate through the line
+    int index = 0;
 
     //Creates a dynamically allocated 2d array to store the line contents
     char** data = malloc(sizeof(char*) * numLines);
 
-    //Creates a 1d array to store the size of each row in our 2d array
+    //Creates a dynamically allocated 1d array to store the size of each row in our 2d array
     int* rowSize = malloc(sizeof(int) * numLines);
 
-    //Dynamically allocates our 2d array by creating a "jagged" array
+    //Dynamically allocates space for our 2d array
     while(1)
     {
         char ch = fgetc(listingFile);
@@ -90,7 +91,7 @@ void assemble(char* listingFilePath)
     }
     rewind(listingFile);
 
-    //Fills the array
+    //Fills our 2d array with the file contents
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         for(index = 0; index < rowSize[lineNum]; index++)
@@ -100,26 +101,20 @@ void assemble(char* listingFilePath)
             {
                 break;
             }
-            if(ch == '\n')
-            {
-                printf("\n");
-            }
-            else
+            if(ch != '\n')
             {
                 data[lineNum][index] = ch;
-                printf("%c", data[lineNum][index]);
             }
         }
     }
-    printf("\n");
 
     //Keeps track of the number of externally defined symbols
     int extDefNumLines = 0;
 
-    //Keeps track of the position of EXTDEF
+    //Keeps track of the position of the EXTDEF directive in the file
     int pos = 0;
 
-    //Keeps track of which line in data[][] EXTDEF is found
+    //Keeps track of which line in our 2d array EXTDEF is found
     int dataLine = 0;
 
     //Gets the number of externally defined symbols
@@ -146,11 +141,11 @@ void assemble(char* listingFilePath)
         }
     }
 
-    //Keeps track of the index as we iterate thru the externally defined symbols
-    int extDefIndex = 0;
-
-    //Keeps track of the symbol we're currently on
+    //Keeps track of the symbol as we iterate through the externally defined symbols
     int extDefLineNum = 0;
+
+    //Keeps track of the index as we iterate through each externally defined symbol
+    int extDefIndex = 0;
 
     //Creates a dynamically allocated 2d array to store the externally defined symbols
     char** extDefSymbols = malloc(sizeof(char*) * extDefNumLines);
@@ -158,7 +153,7 @@ void assemble(char* listingFilePath)
     //Creates a 1d array to store the size of each row in our 2d array
     int* extDefRowSize = malloc(sizeof(int) * extDefNumLines);
 
-    //Finds externally defined symbol names and allocates space in another 2d jagged array
+    //Dynamically allocates space for our 2d array
     for(index = pos; index < rowSize[dataLine]; index++)
     {
         char ch = data[dataLine][index];
@@ -177,12 +172,10 @@ void assemble(char* listingFilePath)
             }
         }
     }
-
     extDefIndex = 0;
     extDefLineNum = 0;
 
-    //Fills the array
-    printf("\nExternally defined symbols are:\n");
+    //Fills our 2d array with all the externally defined symbols
     for(index = pos; index < rowSize[dataLine]; index++)
     {
         char ch = data[dataLine][index];
@@ -192,18 +185,29 @@ void assemble(char* listingFilePath)
             {
                 extDefIndex = 0;
                 extDefLineNum++;
-                printf("\n");
             }
             else
             {
                 extDefSymbols[extDefLineNum][extDefIndex] = ch;
-                printf("%c",extDefSymbols[extDefLineNum][extDefIndex]);
                 extDefIndex++;
             }
         }
     }
 
-    //Find all external symbols within the file
+    //Creates an array to output the contents of the ESTAB
+    char* outputArr = malloc(sizeof(char) * 64);
+    int outputIndex = 0;
+
+    //Print the control section of the ESTAB
+    for(index = 8; data[0][index] != ' '; index++)
+    {
+        outputArr[outputIndex++] = data[0][index];
+    }
+    printf("%-10s",outputArr);
+    memset(outputArr, 0, sizeof outputArr);
+    outputIndex = 0;
+
+    //Find all external symbols within the file and prints them to the ESTAB
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
@@ -214,7 +218,7 @@ void assemble(char* listingFilePath)
             {
                 if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
-                    printf("\nRelative address of external symbol ");
+                    printf("\n%*s",8,"");
                     //Gets the label
                     for(index = 8; index < rowSize[lineNum]; index++)
                     {
@@ -225,15 +229,15 @@ void assemble(char* listingFilePath)
                         }
                         else
                         {
-                            printf("%c", ch);
+                            printf("%c",ch);
                         }
                     }
-                    printf(" is ");
+                    printf("%*s",8,"");
                     //Gets the address
                     for(index = 0; index < 4; index++)
                     {
                         char ch = data[lineNum][index];
-                        printf("%c", ch);
+                        printf("%c",ch);
                     }
                 }
             }
