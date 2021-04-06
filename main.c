@@ -2,20 +2,35 @@
 #include <stdlib.h>
 #include <string.h>
 
-//Function declarations
+/**
+ * Function Description: 
+ * The assemble function is responsible for reading the file and
+ * storing its contents in a 2d array to be parsed later on
+ */
 void assemble(char* listingFilePath);
-void parseInstruction(char* instruction);
+/**
+ * Function Description: 
+ * The buildSymTab function is responsible for reading the 2d array
+ * from the assemble function and creating an ESTAB
+ */
+void buildSymTab(char** data, int* cols, int numLines);
+/**
+ * Function Description: 
+ * The buildObjFile function is responsible for reading the 2d array
+ * from the assemble function and creating the object file (records)
+ */
+void buildObjFile(char** data, int* cols, int numLines);
 
 int main(int argc, char** argv)
 {
+    //Checks to see if the user entered the correct number of arguments
     if(argc < 2)
     {
         printf("Program needs at least one argument.\n");
         return 0;
     }
 
-    //Creates the ESTAB for each file in the argument list
-    printf("-----------------------------\n            ESTAB\n-----------------------------\n");
+    //Begins assembling each listing file in the argument list
     for(int i = 1; i < argc; i++)
     {
         assemble(argv[i]);
@@ -26,7 +41,6 @@ int main(int argc, char** argv)
 
 void assemble(char* listingFilePath)
 {
-    //Creates a FILE pointer using the file path provided
     FILE* listingFile = fopen(listingFilePath,"r");
     if(listingFile == NULL)
     {
@@ -34,13 +48,12 @@ void assemble(char* listingFilePath)
         return;
     }
 
-    //Keeps track of the number of lines in the file
-    int numLines = 0;
-
     //Gets the number of lines in the file
+    int numLines = 0;
+    char ch;
     while(1)
     {
-        char ch = fgetc(listingFile);
+        ch = fgetc(listingFile);
         if(feof(listingFile))
         {
             numLines++;
@@ -53,34 +66,28 @@ void assemble(char* listingFilePath)
     }
     rewind(listingFile);
 
-    //Keeps track of the line number as we iterate through the file
-    int lineNum = 0;
-
-    //Keeps track of the index as we iterate through the line
-    int index = 0;
-
     //Creates a dynamically allocated 2d array to store the line contents
     char** data = malloc(sizeof(char*) * numLines);
 
     //Creates a dynamically allocated 1d array to store the size of each row in our 2d array
-    int* rowSize = malloc(sizeof(int) * numLines);
+    int* cols = malloc(sizeof(int) * numLines);
 
-    //Dynamically allocates space for our 2d array
+    //Dynamically allocates memory for our 2d array
+    int lineNum = 0;
+    int index = 0;
     while(1)
     {
-        char ch = fgetc(listingFile);
+        ch = fgetc(listingFile);
         if(feof(listingFile))
         {
-            data[lineNum] = (char*)malloc(sizeof(char) * (index + 1));
-            rowSize[lineNum] = index + 1;
-            index = 0;
-            lineNum++;
+            data[lineNum] = (char*)malloc(sizeof(char) * (index));
+            cols[lineNum] = index;
             break;
         }
-        if(ch == '\n')
+        else if(ch == '\n')
         {
-            data[lineNum] = (char*)malloc(sizeof(char) * (index + 1));
-            rowSize[lineNum] = index + 1;
+            data[lineNum] = (char*)malloc(sizeof(char) * (index));
+            cols[lineNum] = index;
             index = 0;
             lineNum++;
         }
@@ -92,47 +99,68 @@ void assemble(char* listingFilePath)
     rewind(listingFile);
 
     //Fills our 2d array with the file contents
-    for(lineNum = 0; lineNum < numLines; lineNum++)
+    lineNum = 0;
+    index = 0;
+    while(1)
     {
-        for(index = 0; index < rowSize[lineNum]; index++)
+        ch = fgetc(listingFile);
+        if(feof(listingFile))
         {
-            char ch = fgetc(listingFile);
-            if(feof(listingFile))
-            {
-                break;
-            }
-            if(ch != '\n')
-            {
-                data[lineNum][index] = ch;
-            }
+            break;
+        }
+        else if(ch == '\n')
+        {
+            printf("\n");
+            index = 0;
+            lineNum++;
+        }
+        else
+        {
+            printf("%c",ch);
+            data[lineNum][index] = ch;
+            index++;
         }
     }
 
-    //Keeps track of the number of externally defined symbols
-    int extDefNumLines = 0;
+    printf("\n-----------------------------\n            ESTAB\n-----------------------------\n");
+    buildSymTab(data, cols, numLines);
+    printf("\n-----------------------------\n            OBJFL\n-----------------------------\n");
+    buildObjFile(data, cols, numLines);
+
+    free(data);
+    free(cols);
+}
+
+void buildSymTab(char** data, int* cols, int numLines)
+{
+    //Keeps track of the line number and index positions within the line
+    int lineNum = 0;
+    int index = 0;
 
     //Keeps track of the position of the EXTDEF directive in the file
     int pos = 0;
 
-    //Keeps track of which line in our 2d array EXTDEF is found
+    //Keeps track of which line EXTDEF is found in our 2d array
     int dataLine = 0;
 
     //Gets the number of externally defined symbols
+    int extDefNumLines = 0;
+    char ch;
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         if(strstr(data[lineNum],"EXTDEF") != NULL)
         {
             dataLine = lineNum;
-            char* src = data[lineNum];
+            char* src = data[dataLine];
             char* dst = strstr(src, "EXTDEF");
             pos = dst - src;
             pos += 6;
-            for(index = pos; index < rowSize[lineNum]; index++)
+            for(index = pos; index < cols[dataLine]; index++)
             {
-                char ch = data[lineNum][index];
+                ch = data[dataLine][index];
                 if(ch != ' ')
                 {
-                    if(ch == ',' || (index == rowSize[lineNum] - 1))
+                    if(ch == ',' || (index == cols[dataLine] - 1))
                     {
                         extDefNumLines++;
                     }
@@ -141,28 +169,25 @@ void assemble(char* listingFilePath)
         }
     }
 
-    //Keeps track of the symbol as we iterate through the externally defined symbols
-    int extDefLineNum = 0;
-
-    //Keeps track of the index as we iterate through each externally defined symbol
-    int extDefIndex = 0;
-
     //Creates a dynamically allocated 2d array to store the externally defined symbols
     char** extDefSymbols = malloc(sizeof(char*) * extDefNumLines);
 
-    //Creates a 1d array to store the size of each row in our 2d array
-    int* extDefRowSize = malloc(sizeof(int) * extDefNumLines);
-
     //Dynamically allocates space for our 2d array
-    for(index = pos; index < rowSize[dataLine]; index++)
+    int extDefLineNum = 0;
+    int extDefIndex = 0;
+    for(index = pos; index < cols[dataLine]; index++)
     {
-        char ch = data[dataLine][index];
+        ch = data[dataLine][index];
         if(ch != ' ')
         {
-            if(ch == ',' || (index == rowSize[dataLine] - 1))
+            if(index == cols[dataLine] - 1)
             {
-                extDefSymbols[extDefLineNum] = (char*)malloc(sizeof(char) * (extDefIndex + 1));
-                extDefRowSize[extDefLineNum] = extDefIndex + 1;
+                extDefIndex++;
+                extDefSymbols[extDefLineNum] = (char*)malloc(sizeof(char) * (extDefIndex));
+            }
+            else if(ch == ',')
+            {
+                extDefSymbols[extDefLineNum] = (char*)malloc(sizeof(char) * (extDefIndex));
                 extDefIndex = 0;
                 extDefLineNum++;
             }
@@ -172,16 +197,16 @@ void assemble(char* listingFilePath)
             }
         }
     }
-    extDefIndex = 0;
-    extDefLineNum = 0;
 
     //Fills our 2d array with all the externally defined symbols
-    for(index = pos; index < rowSize[dataLine]; index++)
+    extDefIndex = 0;
+    extDefLineNum = 0;
+    for(index = pos; index <= cols[dataLine]; index++)
     {
-        char ch = data[dataLine][index];
+        ch = data[dataLine][index];
         if(ch != ' ')
         {
-            if(ch == ',' || (index == rowSize[dataLine] - 1))
+            if(ch == ',')
             {
                 extDefIndex = 0;
                 extDefLineNum++;
@@ -219,21 +244,9 @@ void assemble(char* listingFilePath)
                 if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
                     printf("\n%*s",8,"");
-                    //Gets the label
-                    for(index = 8; index < rowSize[lineNum]; index++)
-                    {
-                        char ch = data[lineNum][index];
-                        if(ch == ' ')
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            printf("%c",ch);
-                        }
-                    }
+                    printf("%-8s",extDefSymbols[extDefLineNum]);
                     printf("%*s",8,"");
-                    //Gets the address
+                    //Gets the address of the symbol
                     for(index = 0; index < 4; index++)
                     {
                         char ch = data[lineNum][index];
@@ -245,7 +258,90 @@ void assemble(char* listingFilePath)
     }
 }
 
-void parseInstruction(char* instruction)
+void buildObjFile(char** data, int* cols, int numLines)
 {
-    printf("%s\n", instruction);
+    int index;
+    //Header
+    printf("H");
+    //Creates an array to output the contents of the ESTAB
+    char* outputArr = malloc(sizeof(char) * 64);
+    int outputIndex = 0;
+
+    //Print the control section of the ESTAB
+    for(index = 8; data[0][index] != ' '; index++)
+    {
+        outputArr[outputIndex++] = data[0][index];
+    }
+    printf("%s",outputArr);
+    memset(outputArr, 0, sizeof outputArr);
+    outputIndex = 0;
+
+    printf("00");
+    for(index = 0; index < 4; index++)
+    {
+        printf("%c",data[0][index]);
+    }
+
+    char* arr1 = malloc(sizeof(char) * 4);
+    char* arr2 = malloc(sizeof(char) * 4);
+
+    for(index = 0; index < 4; index++)
+    {
+        arr1[index] = data[0][index];
+        arr2[index] = data[numLines - 1][index];
+    }
+
+    int start = (int)strtol(arr1, NULL, 16);
+    int end = (int)strtol(arr2, NULL, 16);
+
+    int length = end - start;
+    printf("%04X", length);
+    //Text
+
+    //Mod
+
+    //End
+    printf("\n");
+    printf("E");
+
+    char* endArr = malloc(sizeof(char) * 16);
+    int endArrIndex = 0;
+
+    for(int i = 0; i < numLines; i++)
+    {
+        if(strstr(data[i],"END") != NULL)
+        {
+            char* src = data[i];
+            char* dst = strstr(src, "END");
+            int pos = dst - src;
+            pos += 3;
+            for(int j = pos; j < cols[i]; j++)
+            {
+                char ch = data[i][j];
+                if(ch != ' ')
+                {
+                    endArr[endArrIndex++] = ch;
+                }
+            }
+        }
+    }
+    //Account for if the label is used before it is defined
+    if(sizeof endArr == 0)
+    {
+        printf("%s",arr1);
+    }
+    else
+    {
+        for(int i = 0; i < numLines; i++)
+        {
+            if(strstr(data[i],endArr) != NULL)
+            {
+                for(int j = 0; j < 4; j++)
+                {
+                    printf("%c",data[i][j]);
+                }
+                i = numLines;
+            }
+        }
+    }
 }
