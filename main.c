@@ -3,18 +3,27 @@
 #include <string.h>
 
 /**
+ * Function Name:
+ * Assemble
+ * 
  * Function Description: 
  * The assemble function is responsible for reading the file and
  * storing its contents in a 2d array to be parsed later on
  */
 void assemble(char* listingFilePath);
 /**
+ * Function Name:
+ * Build Symbol Table
+ * 
  * Function Description: 
  * The buildSymTab function is responsible for reading the 2d array
  * from the assemble function and creating an ESTAB
  */
 void buildSymTab(char** data, int* cols, int numLines);
 /**
+ * Function Name:
+ * Build Object File
+ * 
  * Function Description: 
  * The buildObjFile function is responsible for reading the 2d array
  * from the assemble function and creating the object file (records)
@@ -30,7 +39,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    //Begins assembling each listing file in the argument list
+    //Begins assembling each listing file provided as input to the program
     for(int i = 1; i < argc; i++)
     {
         assemble(argv[i]);
@@ -42,6 +51,7 @@ int main(int argc, char** argv)
 void assemble(char* listingFilePath)
 {
     FILE* listingFile = fopen(listingFilePath,"r");
+    //Checks to make sure the file exists within the current directory
     if(listingFile == NULL)
     {
         printf("File not found.");
@@ -122,25 +132,27 @@ void assemble(char* listingFilePath)
         }
     }
 
+    //Calls our "Build Symbol Table" and "Build Object File" functions
     printf("\n-----------------------------\n            ESTAB\n-----------------------------\n");
     buildSymTab(data, cols, numLines);
     printf("\n-----------------------------\n            OBJFL\n-----------------------------\n");
     buildObjFile(data, cols, numLines);
 
+    //Frees the allocated memory for our arrays
     free(data);
     free(cols);
 }
 
 void buildSymTab(char** data, int* cols, int numLines)
 {
-    //Keeps track of the line number and index positions within the line
+    //Keeps track of the line number and index position within the line
     int lineNum = 0;
     int index = 0;
 
     //Keeps track of the position of the EXTDEF directive in the file
     int pos = 0;
 
-    //Keeps track of which line EXTDEF is found in our 2d array
+    //Keeps track of which line EXTDEF is in
     int dataLine = 0;
 
     //Gets the number of externally defined symbols
@@ -219,20 +231,42 @@ void buildSymTab(char** data, int* cols, int numLines)
         }
     }
 
-    //Creates an array to output the contents of the ESTAB
-    char* outputArr = malloc(sizeof(char) * 64);
+    //Prints the control section for the ESTAB
+    char* outputArr = malloc(sizeof(char) * 32);
     int outputIndex = 0;
-
-    //Print the control section of the ESTAB
     for(index = 8; data[0][index] != ' '; index++)
     {
         outputArr[outputIndex++] = data[0][index];
     }
-    printf("%-10s",outputArr);
-    memset(outputArr, 0, sizeof outputArr);
-    outputIndex = 0;
+    printf("%-8s",outputArr);
+    free(outputArr);
 
-    //Find all external symbols within the file and prints them to the ESTAB
+    //Prints the address of the control section for the ESTAB
+    char outputAddress[4] = {};
+    outputIndex = 0;
+    for(index = 0; index < 4; index++)
+    {
+        outputAddress[outputIndex++] = data[0][index];
+    }
+    printf("%*s",16,"");
+    printf("%-12s",outputAddress);
+
+    //Prints the length of the control section for the ESTAB
+    char* startAddr = malloc(sizeof(char) * 4);
+    char* endAddr = malloc(sizeof(char) * 4);
+    for(index = 0; index < 4; index++)
+    {
+        startAddr[index] = data[0][index];
+        endAddr[index] = data[numLines - 1][index];
+    }
+    int start = (int)strtol(startAddr, NULL, 16);
+    int end = (int)strtol(endAddr, NULL, 16);
+    int length = end - start;
+    printf("%04X", length);
+    free(startAddr);
+    free(endAddr);
+
+    //Finds all external symbols within the file and prints them to the ESTAB
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
@@ -243,81 +277,97 @@ void buildSymTab(char** data, int* cols, int numLines)
             {
                 if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
+                    //Gets the name of the symbol
                     printf("\n%*s",8,"");
                     printf("%-8s",extDefSymbols[extDefLineNum]);
                     printf("%*s",8,"");
+
                     //Gets the address of the symbol
                     for(index = 0; index < 4; index++)
                     {
                         char ch = data[lineNum][index];
                         printf("%c",ch);
                     }
+
+                    //Remove the symbol from the list since it's been found
+                    extDefSymbols[extDefLineNum] = "\n";
                 }
             }
         }
     }
+
+    //Frees the memory allocated for extDefSymbols
+    free(extDefSymbols);
 }
 
 void buildObjFile(char** data, int* cols, int numLines)
 {
-    int index;
-    //Header
+    /**
+     * Header Record
+     */
     printf("H");
-    //Creates an array to output the contents of the ESTAB
-    char* outputArr = malloc(sizeof(char) * 64);
-    int outputIndex = 0;
 
-    //Print the control section of the ESTAB
+    //Prints the name of the program
+    char* outputArr = malloc(sizeof(char) * 32);
+    int outputIndex = 0;
+    int index;
     for(index = 8; data[0][index] != ' '; index++)
     {
         outputArr[outputIndex++] = data[0][index];
     }
     printf("%s",outputArr);
-    memset(outputArr, 0, sizeof outputArr);
-    outputIndex = 0;
+    free(outputArr);
 
+    //Prints the starting address of the program
     printf("00");
     for(index = 0; index < 4; index++)
     {
         printf("%c",data[0][index]);
     }
 
-    char* arr1 = malloc(sizeof(char) * 4);
-    char* arr2 = malloc(sizeof(char) * 4);
-
+    //Prints the length of the program
+    char* startAddr = malloc(sizeof(char) * 4);
+    char* endAddr = malloc(sizeof(char) * 4);
     for(index = 0; index < 4; index++)
     {
-        arr1[index] = data[0][index];
-        arr2[index] = data[numLines - 1][index];
+        startAddr[index] = data[0][index];
+        endAddr[index] = data[numLines - 1][index];
     }
-
-    int start = (int)strtol(arr1, NULL, 16);
-    int end = (int)strtol(arr2, NULL, 16);
-
+    int start = (int)strtol(startAddr, NULL, 16);
+    int end = (int)strtol(endAddr, NULL, 16);
     int length = end - start;
     printf("%04X", length);
-    //Text
 
-    //Mod
+    /**
+     * Text Record
+     */
+    printf("\nT");
 
-    //End
-    printf("\n");
-    printf("E");
+    /**
+     * Modification Record
+     */
+    printf("\nM");
 
+    /**
+     * End Record
+     */
+    printf("\nE");
+
+    //Finds the end directive and the symbol of the first executable instruction
     char* endArr = malloc(sizeof(char) * 16);
     int endArrIndex = 0;
-
-    for(int i = 0; i < numLines; i++)
+    int lineNum;
+    for(lineNum = 0; lineNum < numLines; lineNum++)
     {
-        if(strstr(data[i],"END") != NULL)
+        if(strstr(data[lineNum],"END") != NULL)
         {
-            char* src = data[i];
+            char* src = data[lineNum];
             char* dst = strstr(src, "END");
             int pos = dst - src;
             pos += 3;
-            for(int j = pos; j < cols[i]; j++)
+            for(index = pos; index < cols[lineNum]; index++)
             {
-                char ch = data[i][j];
+                char ch = data[lineNum][index];
                 if(ch != ' ')
                 {
                     endArr[endArrIndex++] = ch;
@@ -325,23 +375,29 @@ void buildObjFile(char** data, int* cols, int numLines)
             }
         }
     }
-    //Account for if the label is used before it is defined
+
+    //Finds the symbol of the first executable instruction and appends its address to the end record
     if(sizeof endArr == 0)
     {
-        printf("%s",arr1);
+        printf("%s",startAddr);
     }
     else
     {
-        for(int i = 0; i < numLines; i++)
+        for(lineNum = 0; lineNum < numLines; lineNum++)
         {
-            if(strstr(data[i],endArr) != NULL)
+            if(strstr(data[lineNum],endArr) != NULL)
             {
-                for(int j = 0; j < 4; j++)
+                for(index = 0; index < 4; index++)
                 {
-                    printf("%c",data[i][j]);
+                    printf("%c",data[lineNum][index]);
                 }
-                i = numLines;
+                lineNum = numLines;
             }
         }
     }
+    free(endArr);
+
+    //Frees the allocated memory for the start and end addresses
+    free(startAddr);
+    free(endAddr);
 }
