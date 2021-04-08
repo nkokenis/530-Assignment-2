@@ -1,3 +1,6 @@
+.  SOURCE CODE FOR THE XE VERSION OF THE SIC FAMILY OF COMPUTER
+.  Note, 2000 * 3 = 6000 in base 10 and is 1770 in base 16
+.
 0000    ADD      START    0      .SAMPLE PROGRAM
 0000             EXTDEF   COUNT,TABLE,TABLE2
 0000             EXTREF   LEN
@@ -12,9 +15,9 @@
 0016            +STA      TOTAL                    0F100FC3
 001A             LDT      TOTAL                    772FA6
 001D    WLEN     LDA      LEN                      032000
-0020    COUNT    WORD     10
+0020    COUNT    WORD     10                       00000A
 0023    TABLE    RESW     2000
-07F3    TABLE2   RESW     2000
-0FC3    TOTAL    RESW     1
+1793    TABLE2   RESW     2000
+2F03    TOTAL    RESW     1
                  END      ADD
-0FC6    *       =C'EOF'                            454F46
+2F06    *       =C'EOF'                            454F46

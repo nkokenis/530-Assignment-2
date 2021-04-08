@@ -61,17 +61,31 @@ void assemble(char* listingFilePath)
     //Gets the number of lines in the file
     int numLines = 0;
     char ch;
+    int pos = 0;
     while(1)
     {
         ch = fgetc(listingFile);
         if(feof(listingFile))
         {
-            numLines++;
             break;
         }
+
         if(ch == '\n')
         {
+            pos = 0;
+        }
+        else if(pos == 0 && ch == '.')
+        {
+            pos = 1;
+        }
+        else if(pos == 0 && ch != '.')
+        {
+            pos = 1;
             numLines++;
+        }
+        else
+        {
+            //Default case
         }
     }
     rewind(listingFile);
@@ -85,9 +99,26 @@ void assemble(char* listingFilePath)
     //Dynamically allocates memory for our 2d array
     int lineNum = 0;
     int index = 0;
+    pos = 0;
     while(1)
     {
         ch = fgetc(listingFile);
+        if(ch == '.')
+        {
+            if(index != 0)
+            {
+                data[lineNum] = (char*)malloc(sizeof(char) * (index));
+                cols[lineNum] = index;
+                index = 0;
+                lineNum++;
+            }
+            while(ch != '\n')
+            {
+                ch = fgetc(listingFile);
+            }
+            continue;
+        }
+
         if(feof(listingFile))
         {
             data[lineNum] = (char*)malloc(sizeof(char) * (index));
@@ -114,6 +145,21 @@ void assemble(char* listingFilePath)
     while(1)
     {
         ch = fgetc(listingFile);
+        if(ch == '.')
+        {
+            if(index != 0)
+            {
+                printf("\n");
+                index = 0;
+                lineNum++;
+            }
+            while(ch != '\n')
+            {
+                ch = fgetc(listingFile);
+            }
+            continue;
+        }
+
         if(feof(listingFile))
         {
             break;
@@ -319,7 +365,7 @@ void buildObjFile(char** data, int* cols, int numLines)
     free(outputArr);
 
     //Prints the starting address of the program
-    printf("00");
+    printf("0000");
     for(index = 0; index < 4; index++)
     {
         printf("%c",data[0][index]);
@@ -338,15 +384,30 @@ void buildObjFile(char** data, int* cols, int numLines)
     int length = end - start;
     printf("%04X", length);
 
+
+
+
+
     /**
      * Text Record
      */
     printf("\nT");
 
+    //Starting address
+    //Length
+    //Object code; 2 columns per byte of object code
+
+
+
+
     /**
      * Modification Record
      */
     printf("\nM");
+
+
+
+
 
     /**
      * End Record
@@ -377,6 +438,7 @@ void buildObjFile(char** data, int* cols, int numLines)
     }
 
     //Finds the symbol of the first executable instruction and appends its address to the end record
+    printf("00");
     if(sizeof endArr == 0)
     {
         printf("%s",startAddr);
