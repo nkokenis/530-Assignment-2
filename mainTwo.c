@@ -410,62 +410,11 @@ void buildObjFile(char** data, int* cols, int numLines)
      */
     index = 0;
     int lineNum = 0;
-    int column;
-    const int T_MAX_COLS = 69;
-    for(column = 1; column <= 8; column++)
+    while(1)
     {
-        if(column == 1)
+        while(lineNum < numLines)
         {
-            printf("\nT");
-        }
-        else if(column >= 2 && column <= 7)
-        {
-            //Starting address
-            if(data[lineNum][index] != ' ')
-            {
-                printf("%c",data[lineNum][index++]);
-            }
-        }
-        else
-        {
-            //Default case
-            char* objCode = malloc(sizeof(char) * 60);
-            int objCodeIndex = 0;
-            int len = 0;
-            for(lineNum = 0; lineNum < numLines; lineNum++)
-            {
-                if(data[lineNum][52] == ' ')
-                {
-                    //No obj code
-                }
-                else
-                {
-                    //Check length
-                    char* startAddr = malloc(sizeof(char) * 4);
-                    char* endAddr = malloc(sizeof(char) * 4);
-                    for(index = 0; index < 4; index++)
-                    {
-                        startAddr[index] = data[lineNum][index];
-                        endAddr[index] = data[lineNum + 1][index];
-                    }
-                    int start = (int)strtol(startAddr, NULL, 16);
-                    int end = (int)strtol(endAddr, NULL, 16);
-                    len = len + (end - start);
-
-                    //30 = 1E
-                    if(len <= 30)
-                    {
-                        for(index = 52; index < cols[lineNum]; index++)
-                        {
-                            objCode[objCodeIndex++] = data[lineNum][index];
-                        }
-                    }
-                    else
-                    {
-                        //Not enough space in the record, create new record
-                    }
-                }
-            }
+            //
         }
     }
 
