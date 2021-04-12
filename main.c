@@ -410,63 +410,70 @@ void buildObjFile(char** data, int* cols, int numLines)
      */
     index = 0;
     int lineNum = 0;
-    int column;
-    const int T_MAX_COLS = 69;
-    for(column = 1; column <= 8; column++)
+    int currentAddress = 0;
+    const int OBJ_CODE_INDEX = 52;
+    const int MAX_LENGTH = 30;
+    while(1)
     {
-        if(column == 1)
+        //Check for last record
+        if(currentAddress > length)
         {
-            printf("\nT");
+            break;
         }
-        else if(column >= 2 && column <= 7)
+        printf("T");
+        int currentRecordLength = 0;
+        //Prints the starting address of the record
+        for(index = 0; index < 4; index++)
         {
-            //Starting address
-            if(data[lineNum][index] != ' ')
+            printf("%c",data[lineNum][index]);
+        }
+        //Finds the object code for the text record
+        char* objCode = malloc(sizeof(char) * 128);
+        int objCodeIndex = 0;
+        while(lineNum < numLines - 1)
+        {
+            if(data[lineNum][OBJ_CODE_INDEX] == ' ' || cols[lineNum] <= OBJ_CODE_INDEX)
             {
-                printf("%c",data[lineNum][index++]);
+                //No object code in this line
             }
-        }
-        else
-        {
-            //Default case
-            char* objCode = malloc(sizeof(char) * 60);
-            int objCodeIndex = 0;
-            int len = 0;
-            for(lineNum = 0; lineNum < numLines; lineNum++)
+            else
             {
-                if(data[lineNum][52] == ' ')
+                //There is object code in this line
+
+                //Check the length of the line
+                char* startAddr = malloc(sizeof(char) * 4);
+                char* endAddr = malloc(sizeof(char) * 4);
+                for(index = 0; index < 4; index++)
                 {
-                    //No obj code
+                    startAddr[index] = data[lineNum][index];
+                    endAddr[index] = data[lineNum + 1][index];
+                }
+                int start = (int)strtol(startAddr, NULL, 16);
+                int end = (int)strtol(endAddr, NULL, 16);
+                currentRecordLength = currentRecordLength + (end - start);
+                if(currentRecordLength <= MAX_LENGTH)
+                {
+                    //Enough space in the record
+                    for(index = OBJ_CODE_INDEX; index < cols[lineNum]; index++)
+                    {
+                        objCode[objCodeIndex++] = data[lineNum][index];
+                    }
+
                 }
                 else
                 {
-                    //Check length
-                    char* startAddr = malloc(sizeof(char) * 4);
-                    char* endAddr = malloc(sizeof(char) * 4);
-                    for(index = 0; index < 4; index++)
-                    {
-                        startAddr[index] = data[lineNum][index];
-                        endAddr[index] = data[lineNum + 1][index];
-                    }
-                    int start = (int)strtol(startAddr, NULL, 16);
-                    int end = (int)strtol(endAddr, NULL, 16);
-                    len = len + (end - start);
-
-                    //30 = 1E
-                    if(len <= 30)
-                    {
-                        for(index = 52; index < cols[lineNum]; index++)
-                        {
-                            objCode[objCodeIndex++] = data[lineNum][index];
-                        }
-                    }
-                    else
-                    {
-                        //Not enough space in the record, create new record
-                    }
+                    //Not enough space in the record, create new record
+                    currentRecordLength = currentRecordLength - (end - start);
+                    break;
                 }
+                currentAddress = currentAddress + currentRecordLength;
             }
+            lineNum++;
         }
+        //Prints the length of the record
+        printf("%X",currentRecordLength);
+        //Prints the object code of the record
+        printf("%s",objCode);
     }
 
 
