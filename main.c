@@ -392,6 +392,119 @@ void buildObjFile(char** data, int* cols, int numLines)
      * Define Record
      */
     printf("\nD");
+    //Keeps track of the line number and index position within the line
+    int lineNum = 0;
+    index = 0;
+
+    //Keeps track of the position of the EXTDEF directive in the file
+    int pos = 0;
+
+    //Keeps track of which line EXTDEF is in
+    int dataLine = 0;
+    //Gets the number of externally defined symbols
+    int extDefNumLines = 0;
+    char ch;
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        if(strstr(data[lineNum],"EXTDEF") != NULL)
+        {
+            dataLine = lineNum;
+            char* src = data[dataLine];
+            char* dst = strstr(src, "EXTDEF");
+            pos = dst - src;
+            pos += 6;
+            for(index = pos; index < cols[dataLine]; index++)
+            {
+                ch = data[dataLine][index];
+                if(ch != ' ')
+                {
+                    if(ch == ',' || (index == cols[dataLine] - 1))
+                    {
+                        extDefNumLines++;
+                    }
+                }
+            }
+        }
+    }
+
+    //Creates a dynamically allocated 2d array to store the externally defined symbols
+    char** extDefSymbols = malloc(sizeof(char*) * extDefNumLines);
+
+    //Dynamically allocates space for our 2d array
+    int extDefLineNum = 0;
+    int extDefIndex = 0;
+    for(index = pos; index < cols[dataLine]; index++)
+    {
+        ch = data[dataLine][index];
+        if(ch != ' ')
+        {
+            if(index == cols[dataLine] - 1)
+            {
+                extDefIndex++;
+                extDefSymbols[extDefLineNum] = (char*)malloc(sizeof(char) * (extDefIndex));
+            }
+            else if(ch == ',')
+            {
+                extDefSymbols[extDefLineNum] = (char*)malloc(sizeof(char) * (extDefIndex));
+                extDefIndex = 0;
+                extDefLineNum++;
+            }
+            else
+            {
+                extDefIndex++;
+            }
+        }
+    }
+
+    //Fills our 2d array with all the externally defined symbols
+    extDefIndex = 0;
+    extDefLineNum = 0;
+    for(index = pos; index <= cols[dataLine]; index++)
+    {
+        ch = data[dataLine][index];
+        if(ch != ' ')
+        {
+            if(ch == ',')
+            {
+                extDefIndex = 0;
+                extDefLineNum++;
+            }
+            else
+            {
+                extDefSymbols[extDefLineNum][extDefIndex] = ch;
+                extDefIndex++;
+            }
+        }
+    }
+
+    //Finds all external symbols within the file and prints them to the ESTAB
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
+           strstr(data[lineNum],"RESW") != NULL || strstr(data[lineNum],"RESB") != NULL ||
+           strstr(data[lineNum],"EQU") != NULL)
+        {
+            for(extDefLineNum = 0; extDefLineNum < extDefNumLines; extDefLineNum++)
+            {
+                if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
+                {
+                    //Gets the name of the symbol
+                    printf("%s ",extDefSymbols[extDefLineNum]);
+
+                    //Gets the address of the symbol
+                    for(index = 0; index < 4; index++)
+                    {
+                        char ch = data[lineNum][index];
+                        printf("%c",ch);
+                    }
+
+                    //Remove the symbol from the list since it's been found
+                    extDefSymbols[extDefLineNum] = "\n";
+                }
+            }
+        }
+    }
+
 
 
 
@@ -401,6 +514,24 @@ void buildObjFile(char** data, int* cols, int numLines)
      * Refer Record
      */
     printf("\nR");
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        if(strstr(data[lineNum],"EXTREF") != NULL)
+        {
+            char* src = data[lineNum];
+            char* dst = strstr(src, "EXTREF");
+            int pos = dst - src;
+            pos += 6;
+            for(index = pos; index < cols[lineNum]; index++)
+            {
+                ch = data[lineNum][index];
+                if(ch != ' ')
+                {
+                    printf("%c",ch);
+                }
+            }
+        }
+    }
 
 
 
@@ -410,18 +541,13 @@ void buildObjFile(char** data, int* cols, int numLines)
      * Text Record
      */
     index = 0;
-    int lineNum = 0;
+    lineNum = 0;
     int currentAddress = 0;
     const int OBJ_CODE_INDEX = 52;
     const int MAX_LENGTH = 30;
 
-    while(1)
+    while(currentAddress != length)
     {
-        //Check for last record
-        if(currentAddress > length)
-        {
-            break;
-        }
         printf("\n");
         printf("%d %d ",currentAddress,length);
         printf("T");
@@ -469,8 +595,8 @@ void buildObjFile(char** data, int* cols, int numLines)
                 if(currentRecordLength <= MAX_LENGTH)
                 {
                     //Enough space in the record
-                    currentAddress = currentAddress + currentRecordLength;
-                    for(index = OBJ_CODE_INDEX; index < cols[lineNum]; index++)
+                    currentAddress = currentAddress + (end - start);
+                    for(index = OBJ_CODE_INDEX - 1; index < cols[lineNum]; index++)
                     {
                         objCode[objCodeIndex++] = data[lineNum][index];
                     }
@@ -480,7 +606,6 @@ void buildObjFile(char** data, int* cols, int numLines)
                 {
                     //Not enough space in the record, create new record
                     currentRecordLength = currentRecordLength - (end - start);
-                    currentAddress = currentAddress - currentRecordLength;
                     break;
                 }
             }
@@ -499,7 +624,132 @@ void buildObjFile(char** data, int* cols, int numLines)
     /**
      * Modification Record
      */
-    printf("\nM");
+
+    //Gets the number of externally defined symbols
+    int extRefNumLines = 0;
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        if(strstr(data[lineNum],"EXTREF") != NULL)
+        {
+            dataLine = lineNum;
+            char* src = data[dataLine];
+            char* dst = strstr(src, "EXTREF");
+            pos = dst - src;
+            pos += 6;
+            for(index = pos; index < cols[dataLine]; index++)
+            {
+                ch = data[dataLine][index];
+                if(ch != ' ')
+                {
+                    if(ch == ',' || (index == cols[dataLine] - 1))
+                    {
+                        extRefNumLines++;
+                    }
+                }
+            }
+        }
+    }
+
+    //Creates a dynamically allocated 2d array to store the externally defined symbols
+    char** extRefSymbols = malloc(sizeof(char*) * extRefNumLines);
+
+    //Dynamically allocates space for our 2d array
+    int extRefLineNum = 0;
+    int extRefIndex = 0;
+    for(index = pos; index < cols[dataLine]; index++)
+    {
+        ch = data[dataLine][index];
+        if(ch != ' ')
+        {
+            if(index == cols[dataLine] - 1)
+            {
+                extRefIndex++;
+                extRefSymbols[extRefLineNum] = (char*)malloc(sizeof(char) * (extRefIndex));
+            }
+            else if(ch == ',')
+            {
+                extRefSymbols[extRefLineNum] = (char*)malloc(sizeof(char) * (extRefIndex));
+                extRefIndex = 0;
+                extRefLineNum++;
+            }
+            else
+            {
+                extRefIndex++;
+            }
+        }
+    }
+
+    //Fills our 2d array with all the externally defined symbols
+    extRefIndex = 0;
+    extRefLineNum = 0;
+    for(index = pos; index <= cols[dataLine]; index++)
+    {
+        ch = data[dataLine][index];
+        if(ch != ' ')
+        {
+            if(ch == ',')
+            {
+                extRefIndex = 0;
+                extRefLineNum++;
+            }
+            else
+            {
+                extRefSymbols[extRefLineNum][extRefIndex] = ch;
+                extRefIndex++;
+            }
+        }
+    }
+
+    //Finds all external symbols within the file and prints them to the ESTAB
+    for(lineNum = 0; lineNum < numLines; lineNum++)
+    {
+        int count = 0;
+        for(index = OBJ_CODE_INDEX - 1; index < cols[lineNum]; index++)
+        {
+            count++;
+        }
+        //printf("%d",count);
+        if(count == 8)
+        {
+            //Mod record
+            printf("\nM");
+            //Address
+            printf("00");
+            for(int i = 0; i < 4; i++)
+            {
+                printf("%c",data[lineNum][i]);
+            }
+            //Length of the field to be modified
+            printf("05+");
+            for(int i = 8; data[0][i] != ' '; i++)
+            {
+                printf("%c",data[0][i]);
+            }
+        }
+        else
+        {
+            for(extRefLineNum = 0; extRefLineNum < extRefNumLines; extRefLineNum++)
+            {
+                if(strstr(data[lineNum],extRefSymbols[extRefLineNum]) != NULL && strstr(data[lineNum],"EXTREF") == NULL)
+                {
+                    //Mod record
+                    printf("\nM");
+                    //Address
+                    printf("00");
+                    for(int i = 0; i < 4; i++)
+                    {
+                        printf("%c",data[lineNum][i]);
+                    }
+                    //Length of the field to be modified
+                    printf("06+");
+                    printf("%s",extRefSymbols[extRefLineNum]);
+
+                    //Remove the symbol from the list since it's been found
+                    extRefSymbols[extRefLineNum] = "\n";
+                }
+            }
+        }
+    }
 
 
 
