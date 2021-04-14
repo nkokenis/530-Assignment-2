@@ -308,6 +308,7 @@ void buildSymTab(char** data, int* cols, int numLines)
     int start = (int)strtol(startAddr, NULL, 16);
     int end = (int)strtol(endAddr, NULL, 16);
     int length = end - start;
+    length = length + 3;
     printf("%04X", length);
     free(startAddr);
     free(endAddr);
@@ -350,7 +351,6 @@ void buildObjFile(char** data, int* cols, int numLines)
 {
     /**
      * Header Record
-     * NOTE: Add 3 to the header record length because of the EOF character
      */
     printf("H");
 
@@ -383,7 +383,8 @@ void buildObjFile(char** data, int* cols, int numLines)
     int start = (int)strtol(startAddr, NULL, 16);
     int end = (int)strtol(endAddr, NULL, 16);
     int length = end - start;
-    printf("%04X", length);
+    int lengthEOF = length + 3;
+    printf("%04X", lengthEOF);
 
 
 
@@ -413,6 +414,7 @@ void buildObjFile(char** data, int* cols, int numLines)
     int currentAddress = 0;
     const int OBJ_CODE_INDEX = 52;
     const int MAX_LENGTH = 30;
+
     while(1)
     {
         //Check for last record
@@ -420,9 +422,12 @@ void buildObjFile(char** data, int* cols, int numLines)
         {
             break;
         }
+        printf("\n");
+        printf("%d %d ",currentAddress,length);
         printf("T");
         int currentRecordLength = 0;
         //Prints the starting address of the record
+        printf("00");
         for(index = 0; index < 4; index++)
         {
             printf("%c",data[lineNum][index]);
@@ -435,6 +440,16 @@ void buildObjFile(char** data, int* cols, int numLines)
             if(data[lineNum][OBJ_CODE_INDEX] == ' ' || cols[lineNum] <= OBJ_CODE_INDEX)
             {
                 //No object code in this line
+                char* startAddr = malloc(sizeof(char) * 4);
+                char* endAddr = malloc(sizeof(char) * 4);
+                for(index = 0; index < 4; index++)
+                {
+                    startAddr[index] = data[lineNum][index];
+                    endAddr[index] = data[lineNum + 1][index];
+                }
+                int start = (int)strtol(startAddr, NULL, 16);
+                int end = (int)strtol(endAddr, NULL, 16);
+                currentAddress = currentAddress + (end - start);
             }
             else
             {
@@ -454,6 +469,7 @@ void buildObjFile(char** data, int* cols, int numLines)
                 if(currentRecordLength <= MAX_LENGTH)
                 {
                     //Enough space in the record
+                    currentAddress = currentAddress + currentRecordLength;
                     for(index = OBJ_CODE_INDEX; index < cols[lineNum]; index++)
                     {
                         objCode[objCodeIndex++] = data[lineNum][index];
@@ -464,9 +480,9 @@ void buildObjFile(char** data, int* cols, int numLines)
                 {
                     //Not enough space in the record, create new record
                     currentRecordLength = currentRecordLength - (end - start);
+                    currentAddress = currentAddress - currentRecordLength;
                     break;
                 }
-                currentAddress = currentAddress + currentRecordLength;
             }
             lineNum++;
         }
