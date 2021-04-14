@@ -538,7 +538,9 @@ void buildObjFile(char** data, int* cols, int numLines)
 
 
     /**
+     * ---------------------------------------------------------------------------------------------
      * Text Record
+     * ---------------------------------------------------------------------------------------------
      */
     index = 0;
     lineNum = 0;
@@ -615,6 +617,7 @@ void buildObjFile(char** data, int* cols, int numLines)
         printf("%X",currentRecordLength);
         //Prints the object code of the record
         printf("%s",objCode);
+        memset(objCode, 0, sizeof(char));
     }
 
 
@@ -715,10 +718,24 @@ void buildObjFile(char** data, int* cols, int numLines)
             printf("\nM");
             //Address
             printf("00");
+            char* startAddr = malloc(sizeof(char) * 4);
+            char* endAddr = malloc(sizeof(char) * 4);
             for(int i = 0; i < 4; i++)
             {
-                printf("%c",data[lineNum][i]);
+                startAddr[i] = data[lineNum][i];
+                if(i != 3)
+                {
+                    endAddr[i] = '0';
+                }
+                else
+                {
+                    endAddr[i] = '1';
+                }
             }
+            int start = (int)strtol(startAddr, NULL, 16);
+            int end = (int)strtol(endAddr, NULL, 16);
+            int ans = start + end;
+            printf("%04X",ans);
             //Length of the field to be modified
             printf("05+");
             for(int i = 8; data[0][i] != ' '; i++)
@@ -736,12 +753,43 @@ void buildObjFile(char** data, int* cols, int numLines)
                     printf("\nM");
                     //Address
                     printf("00");
+                    char* startAddr = malloc(sizeof(char) * 4);
+                    char* endAddr = malloc(sizeof(char) * 4);
                     for(int i = 0; i < 4; i++)
                     {
-                        printf("%c",data[lineNum][i]);
+                        startAddr[i] = data[lineNum][i];
+                        if(i != 3)
+                        {
+                            endAddr[i] = '0';
+                        }
+                        else
+                        {
+                            endAddr[i] = '1';
+                        }
                     }
+                    int start = (int)strtol(startAddr, NULL, 16);
+                    int end = (int)strtol(endAddr, NULL, 16);
+                    int ans = start + end;
+                    printf("%04X",ans);
                     //Length of the field to be modified
-                    printf("06+");
+                    if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
+                       strstr(data[lineNum],"RESW") != NULL || strstr(data[lineNum],"RESB") != NULL ||
+                       strstr(data[lineNum],"EQU") != NULL)
+                    {
+                        printf("06");
+                    }
+                    else
+                    {
+                        printf("05");
+                    }
+                    if(strstr(data[lineNum],"-") != NULL)
+                    {
+                        printf("-");
+                    }
+                    else
+                    {
+                        printf("+");
+                    }
                     printf("%s",extRefSymbols[extRefLineNum]);
 
                     //Remove the symbol from the list since it's been found
