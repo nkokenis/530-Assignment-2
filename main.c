@@ -489,7 +489,7 @@ void buildObjFile(char** data, int* cols, int numLines)
                 if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
                     //Gets the name of the symbol
-                    printf("%s ",extDefSymbols[extDefLineNum]);
+                    printf("%s",extDefSymbols[extDefLineNum]);
 
                     //Gets the address of the symbol
                     for(index = 0; index < 4; index++)
@@ -542,82 +542,144 @@ void buildObjFile(char** data, int* cols, int numLines)
      * Text Record
      * ---------------------------------------------------------------------------------------------
      */
-    index = 0;
     lineNum = 0;
-    int currentAddress = 0;
+    int x = 0;
     const int OBJ_CODE_INDEX = 52;
-    const int MAX_LENGTH = 30;
+    const int MAX_LINE_LEN = 30;
+    int lineLength = 0;
 
-    while(currentAddress != length)
+    int y = 0;
+    int lineLength2 = 0;
+
+    int globalAddressCounter = 0;
+    int count = 0;
+
+    char strt[4] = {'0','0','0','0'};
+    char endd[4] = {'0','0','0','0'};
+
+    while((globalAddressCounter <= length) && (count < 2))
     {
-        printf("\n");
-        printf("%d %d ",currentAddress,length);
-        printf("T");
-        int currentRecordLength = 0;
-        //Prints the starting address of the record
+        lineLength = 0;
+        lineLength2 = 0;
+        //Print T
+        printf("\nT");
+        //Print the starting address of the record
         printf("00");
-        for(index = 0; index < 4; index++)
+        for(int i = 0; i < 4; i++)
         {
-            printf("%c",data[lineNum][index]);
+            printf("%c",data[x][i]);
         }
-        //Finds the object code for the text record
-        char* objCode = malloc(sizeof(char) * 128);
-        int objCodeIndex = 0;
-        while(lineNum < numLines - 1)
+
+        //Print the length of the record
+        while(y < numLines - 1)
         {
-            if(data[lineNum][OBJ_CODE_INDEX] == ' ' || cols[lineNum] <= OBJ_CODE_INDEX)
+            if(cols[y] < OBJ_CODE_INDEX)
             {
-                //No object code in this line
+                //No object code
                 char* startAddr = malloc(sizeof(char) * 4);
                 char* endAddr = malloc(sizeof(char) * 4);
                 for(index = 0; index < 4; index++)
                 {
-                    startAddr[index] = data[lineNum][index];
-                    endAddr[index] = data[lineNum + 1][index];
+                    startAddr[index] = data[y][index];
+                    endAddr[index] = data[y + 1][index];
                 }
                 int start = (int)strtol(startAddr, NULL, 16);
                 int end = (int)strtol(endAddr, NULL, 16);
-                currentAddress = currentAddress + (end - start);
+                globalAddressCounter = globalAddressCounter + (end - start);
+                
             }
             else
             {
-                //There is object code in this line
-
-                //Check the length of the line
+                //There is object code
+                //How long is the object code in this line?
                 char* startAddr = malloc(sizeof(char) * 4);
                 char* endAddr = malloc(sizeof(char) * 4);
                 for(index = 0; index < 4; index++)
                 {
-                    startAddr[index] = data[lineNum][index];
-                    endAddr[index] = data[lineNum + 1][index];
+                    startAddr[index] = data[y][index];
+                    endAddr[index] = data[y + 1][index];
                 }
                 int start = (int)strtol(startAddr, NULL, 16);
                 int end = (int)strtol(endAddr, NULL, 16);
-                currentRecordLength = currentRecordLength + (end - start);
-                if(currentRecordLength <= MAX_LENGTH)
+                lineLength2 = lineLength2 + (end - start);
+                globalAddressCounter = globalAddressCounter + (end - start);
+                if(lineLength2 <= MAX_LINE_LEN)
                 {
-                    //Enough space in the record
-                    currentAddress = currentAddress + (end - start);
-                    for(index = OBJ_CODE_INDEX - 1; index < cols[lineNum]; index++)
+                    //Add the object code to the record
+
+                }
+                else
+                {
+                    //Do not add the object code to the record, this indicates the end of a record
+                    lineLength2 -= end - start;
+                    globalAddressCounter = globalAddressCounter - (end - start);
+                    break;
+                }
+
+            }
+            y++;
+        }
+        if(count == 1)
+        {
+            printf("03");
+        }
+        else
+        {
+            printf("%02X",lineLength2);
+        }
+
+        //Print the object code for the record
+        while(x < numLines - 1)
+        {
+            if(cols[x] < OBJ_CODE_INDEX)
+            {
+                //No object code
+                
+            }
+            else
+            {
+                //There is object code
+                //How long is the object code in this line?
+                char* startAddr = malloc(sizeof(char) * 4);
+                char* endAddr = malloc(sizeof(char) * 4);
+                for(index = 0; index < 4; index++)
+                {
+                    startAddr[index] = data[x][index];
+                    endAddr[index] = data[x + 1][index];
+                }
+                int start = (int)strtol(startAddr, NULL, 16);
+                int end = (int)strtol(endAddr, NULL, 16);
+                lineLength = lineLength + (end - start);
+                //printf("%d",lineLength);
+                if(lineLength <= MAX_LINE_LEN)
+                {
+                    //Add the object code to the record
+                    for(int i = OBJ_CODE_INDEX - 1; i < cols[x]; i++)
                     {
-                        objCode[objCodeIndex++] = data[lineNum][index];
+                        printf("%c",data[x][i]);
                     }
 
                 }
                 else
                 {
-                    //Not enough space in the record, create new record
-                    currentRecordLength = currentRecordLength - (end - start);
+                    //Do not add the object code to the record, this indicates the end of a record
                     break;
                 }
+
             }
-            lineNum++;
+            x++;
         }
-        //Prints the length of the record
-        printf("%X",currentRecordLength);
-        //Prints the object code of the record
-        printf("%s",objCode);
-        memset(objCode, 0, sizeof(char));
+        lineNum++;
+
+        if(count == 1)
+        {
+            printf("454F46");
+        }
+
+        if(globalAddressCounter == length)
+        {
+            count++;
+        }
     }
 
 
