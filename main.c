@@ -149,7 +149,6 @@ void assemble(char* listingFilePath)
         {
             if(index != 0)
             {
-                printf("\n");
                 index = 0;
                 lineNum++;
             }
@@ -166,22 +165,18 @@ void assemble(char* listingFilePath)
         }
         else if(ch == '\n')
         {
-            printf("\n");
             index = 0;
             lineNum++;
         }
         else
         {
-            printf("%c",ch);
             data[lineNum][index] = ch;
             index++;
         }
     }
 
     //Calls our "Build Symbol Table" and "Build Object File" functions
-    printf("\n-----------------------------\n            ESTAB\n-----------------------------\n");
     buildSymTab(data, cols, numLines);
-    printf("\n-----------------------------\n            OBJFL\n-----------------------------\n");
     buildObjFile(data, cols, numLines);
 
     //Frees the allocated memory for our arrays
@@ -191,6 +186,8 @@ void assemble(char* listingFilePath)
 
 void buildSymTab(char** data, int* cols, int numLines)
 {
+    FILE *fp;
+    fp = fopen("output.st","w");
     //Keeps track of the line number and index position within the line
     int lineNum = 0;
     int index = 0;
@@ -284,7 +281,7 @@ void buildSymTab(char** data, int* cols, int numLines)
     {
         outputArr[outputIndex++] = data[0][index];
     }
-    printf("%-8s",outputArr);
+    fprintf(fp,"%-8s",outputArr);
     free(outputArr);
 
     //Prints the address of the control section for the ESTAB
@@ -294,8 +291,8 @@ void buildSymTab(char** data, int* cols, int numLines)
     {
         outputAddress[outputIndex++] = data[0][index];
     }
-    printf("%*s",16,"");
-    printf("%-12s",outputAddress);
+    fprintf(fp,"%*s",16,"");
+    fprintf(fp,"%-12s",outputAddress);
 
     //Prints the length of the control section for the ESTAB
     char* startAddr = malloc(sizeof(char) * 4);
@@ -309,7 +306,7 @@ void buildSymTab(char** data, int* cols, int numLines)
     int end = (int)strtol(endAddr, NULL, 16);
     int length = end - start;
     length = length + 3;
-    printf("%04X", length);
+    fprintf(fp,"%04X", length);
     free(startAddr);
     free(endAddr);
 
@@ -325,15 +322,15 @@ void buildSymTab(char** data, int* cols, int numLines)
                 if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
                     //Gets the name of the symbol
-                    printf("\n%*s",8,"");
-                    printf("%-8s",extDefSymbols[extDefLineNum]);
-                    printf("%*s",8,"");
+                    fprintf(fp,"\n%*s",8,"");
+                    fprintf(fp,"%-8s",extDefSymbols[extDefLineNum]);
+                    fprintf(fp,"%*s",8,"");
 
                     //Gets the address of the symbol
                     for(index = 0; index < 4; index++)
                     {
                         char ch = data[lineNum][index];
-                        printf("%c",ch);
+                        fprintf(fp,"%c",ch);
                     }
 
                     //Remove the symbol from the list since it's been found
@@ -345,31 +342,30 @@ void buildSymTab(char** data, int* cols, int numLines)
 
     //Frees the memory allocated for extDefSymbols
     free(extDefSymbols);
+    fclose(fp);
 }
 
 void buildObjFile(char** data, int* cols, int numLines)
 {
+    FILE *objFP;
+    objFP = fopen("objoutput.obj","w");
     /**
      * Header Record
      */
-    printf("H");
+    fprintf(objFP,"H");
 
     //Prints the name of the program
-    char* outputArr = malloc(sizeof(char) * 32);
-    int outputIndex = 0;
     int index;
     for(index = 8; data[0][index] != ' '; index++)
     {
-        outputArr[outputIndex++] = data[0][index];
+        fprintf(objFP,"%c",data[0][index]);
     }
-    printf("%s",outputArr);
-    free(outputArr);
 
     //Prints the starting address of the program
-    printf("0000");
+    fprintf(objFP,"0000");
     for(index = 0; index < 4; index++)
     {
-        printf("%c",data[0][index]);
+        fprintf(objFP,"%c",data[0][index]);
     }
 
     //Prints the length of the program
@@ -384,14 +380,14 @@ void buildObjFile(char** data, int* cols, int numLines)
     int end = (int)strtol(endAddr, NULL, 16);
     int length = end - start;
     int lengthEOF = length + 3;
-    printf("%04X", lengthEOF);
+    fprintf(objFP,"%04X", lengthEOF);
 
 
 
     /**
      * Define Record
      */
-    printf("\nD");
+    fprintf(objFP,"\nD");
     //Keeps track of the line number and index position within the line
     int lineNum = 0;
     index = 0;
@@ -489,13 +485,13 @@ void buildObjFile(char** data, int* cols, int numLines)
                 if(strstr(data[lineNum],extDefSymbols[extDefLineNum]) != NULL)
                 {
                     //Gets the name of the symbol
-                    printf("%s",extDefSymbols[extDefLineNum]);
+                    fprintf(objFP,"%s",extDefSymbols[extDefLineNum]);
 
                     //Gets the address of the symbol
                     for(index = 0; index < 4; index++)
                     {
                         char ch = data[lineNum][index];
-                        printf("%c",ch);
+                        fprintf(objFP,"%c",ch);
                     }
 
                     //Remove the symbol from the list since it's been found
@@ -513,7 +509,7 @@ void buildObjFile(char** data, int* cols, int numLines)
     /**
      * Refer Record
      */
-    printf("\nR");
+    fprintf(objFP,"\nR");
     for(lineNum = 0; lineNum < numLines; lineNum++)
     {
         if(strstr(data[lineNum],"EXTREF") != NULL)
@@ -527,7 +523,14 @@ void buildObjFile(char** data, int* cols, int numLines)
                 ch = data[lineNum][index];
                 if(ch != ' ')
                 {
-                    printf("%c",ch);
+                    if(ch == ',')
+                    {
+                        fprintf(objFP," ");
+                    }
+                    else
+                    {
+                        fprintf(objFP,"%c",ch);
+                    }
                 }
             }
         }
@@ -554,20 +557,17 @@ void buildObjFile(char** data, int* cols, int numLines)
     int globalAddressCounter = 0;
     int count = 0;
 
-    char strt[4] = {'0','0','0','0'};
-    char endd[4] = {'0','0','0','0'};
-
     while((globalAddressCounter <= length) && (count < 2))
     {
         lineLength = 0;
         lineLength2 = 0;
         //Print T
-        printf("\nT");
+        fprintf(objFP,"\nT");
         //Print the starting address of the record
-        printf("00");
+        fprintf(objFP,"00");
         for(int i = 0; i < 4; i++)
         {
-            printf("%c",data[x][i]);
+            fprintf(objFP,"%c",data[x][i]);
         }
 
         //Print the length of the record
@@ -621,11 +621,11 @@ void buildObjFile(char** data, int* cols, int numLines)
         }
         if(count == 1)
         {
-            printf("03");
+            fprintf(objFP,"03");
         }
         else
         {
-            printf("%02X",lineLength2);
+            fprintf(objFP,"%02X",lineLength2);
         }
 
         //Print the object code for the record
@@ -656,7 +656,7 @@ void buildObjFile(char** data, int* cols, int numLines)
                     //Add the object code to the record
                     for(int i = OBJ_CODE_INDEX - 1; i < cols[x]; i++)
                     {
-                        printf("%c",data[x][i]);
+                        fprintf(objFP,"%c",data[x][i]);
                     }
 
                 }
@@ -673,7 +673,7 @@ void buildObjFile(char** data, int* cols, int numLines)
 
         if(count == 1)
         {
-            printf("454F46");
+            fprintf(objFP,"454F46");
         }
 
         if(globalAddressCounter == length)
@@ -729,11 +729,11 @@ void buildObjFile(char** data, int* cols, int numLines)
             if(index == cols[dataLine] - 1)
             {
                 extRefIndex++;
-                extRefSymbols[extRefLineNum] = (char*)malloc(sizeof(char) * (extRefIndex));
+                extRefSymbols[extRefLineNum] = (char*)malloc(sizeof(char) * (extRefIndex + 1));
             }
             else if(ch == ',')
             {
-                extRefSymbols[extRefLineNum] = (char*)malloc(sizeof(char) * (extRefIndex));
+                extRefSymbols[extRefLineNum] = (char*)malloc(sizeof(char) * (extRefIndex + 1));
                 extRefIndex = 0;
                 extRefLineNum++;
             }
@@ -777,9 +777,9 @@ void buildObjFile(char** data, int* cols, int numLines)
         if(count == 8)
         {
             //Mod record
-            printf("\nM");
+            fprintf(objFP,"\nM");
             //Address
-            printf("00");
+            fprintf(objFP,"00");
             char* startAddr = malloc(sizeof(char) * 4);
             char* endAddr = malloc(sizeof(char) * 4);
             for(int i = 0; i < 4; i++)
@@ -797,24 +797,25 @@ void buildObjFile(char** data, int* cols, int numLines)
             int start = (int)strtol(startAddr, NULL, 16);
             int end = (int)strtol(endAddr, NULL, 16);
             int ans = start + end;
-            printf("%04X",ans);
+            fprintf(objFP,"%04X",ans);
             //Length of the field to be modified
-            printf("05+");
+            fprintf(objFP,"05+");
             for(int i = 8; data[0][i] != ' '; i++)
             {
-                printf("%c",data[0][i]);
+                fprintf(objFP,"%c",data[0][i]);
             }
         }
         else
         {
             for(extRefLineNum = 0; extRefLineNum < extRefNumLines; extRefLineNum++)
             {
-                if(strstr(data[lineNum],extRefSymbols[extRefLineNum]) != NULL && strstr(data[lineNum],"EXTREF") == NULL)
+                if(strstr(data[lineNum],extRefSymbols[extRefLineNum]) != NULL && strstr(data[lineNum],"EXTREF") == NULL && 
+                   strstr(data[lineNum],"BASE") == NULL)
                 {
                     //Mod record
-                    printf("\nM");
+                    fprintf(objFP,"\nM");
                     //Address
-                    printf("00");
+                    fprintf(objFP,"00");
                     char* startAddr = malloc(sizeof(char) * 4);
                     char* endAddr = malloc(sizeof(char) * 4);
                     for(int i = 0; i < 4; i++)
@@ -832,27 +833,27 @@ void buildObjFile(char** data, int* cols, int numLines)
                     int start = (int)strtol(startAddr, NULL, 16);
                     int end = (int)strtol(endAddr, NULL, 16);
                     int ans = start + end;
-                    printf("%04X",ans);
+                    fprintf(objFP,"%04X",ans);
                     //Length of the field to be modified
                     if(strstr(data[lineNum],"WORD") != NULL || strstr(data[lineNum],"BYTE") != NULL ||
                        strstr(data[lineNum],"RESW") != NULL || strstr(data[lineNum],"RESB") != NULL ||
                        strstr(data[lineNum],"EQU") != NULL)
                     {
-                        printf("06");
+                        fprintf(objFP,"06");
                     }
                     else
                     {
-                        printf("05");
+                        fprintf(objFP,"05");
                     }
                     if(strstr(data[lineNum],"-") != NULL)
                     {
-                        printf("-");
+                        fprintf(objFP,"-");
                     }
                     else
                     {
-                        printf("+");
+                        fprintf(objFP,"+");
                     }
-                    printf("%s",extRefSymbols[extRefLineNum]);
+                    fprintf(objFP,"%s",extRefSymbols[extRefLineNum]);
 
                     //Remove the symbol from the list since it's been found
                     extRefSymbols[extRefLineNum] = "\n";
@@ -868,7 +869,7 @@ void buildObjFile(char** data, int* cols, int numLines)
     /**
      * End Record
      */
-    printf("\nE");
+    fprintf(objFP,"\nE");
 
     //Finds the end directive and the symbol of the first executable instruction
     char* endArr = malloc(sizeof(char) * 16);
@@ -893,10 +894,9 @@ void buildObjFile(char** data, int* cols, int numLines)
     }
 
     //Finds the symbol of the first executable instruction and appends its address to the end record
-    printf("00");
     if(sizeof endArr == 0)
     {
-        printf("%s",startAddr);
+        fprintf(objFP,"%s",startAddr);
     }
     else
     {
@@ -904,9 +904,10 @@ void buildObjFile(char** data, int* cols, int numLines)
         {
             if(strstr(data[lineNum],endArr) != NULL)
             {
+                fprintf(objFP,"00");
                 for(index = 0; index < 4; index++)
                 {
-                    printf("%c",data[lineNum][index]);
+                    fprintf(objFP,"%c",data[lineNum][index]);
                 }
                 lineNum = numLines;
             }
@@ -917,4 +918,5 @@ void buildObjFile(char** data, int* cols, int numLines)
     //Frees the allocated memory for the start and end addresses
     free(startAddr);
     free(endAddr);
+    fclose(objFP);
 }
