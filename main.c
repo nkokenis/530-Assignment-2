@@ -56,7 +56,8 @@ int main(int argc, char** argv)
     }
 
     //Begins the linkage editor for each listing file
-    for(int i = 1; i < argc; i++)
+    int i;
+    for(i = 1; i < argc; i++)
     {
         assemble(argv[i]);
     }
@@ -601,7 +602,8 @@ void buildObjFile(char** data, int* cols, int numLines)
 
         //Prints the starting address of the record
         fprintf(outputFile,"00");
-        for(int i = 0; i < 4; i++)
+        int i;
+        for(i = 0; i < 4; i++)
         {
             fprintf(outputFile,"%c",data[x][i]);
         }
@@ -678,7 +680,8 @@ void buildObjFile(char** data, int* cols, int numLines)
                 if(lineLength <= MAX_LINE_LEN)
                 {
                     //Add the object code to the record
-                    for(int i = OBJ_CODE_INDEX - 1; i < cols[x]; i++)
+                    int i;
+                    for(i = OBJ_CODE_INDEX - 1; i < cols[x]; i++)
                     {
                         fprintf(outputFile,"%c",data[x][i]);
                     }
@@ -802,7 +805,8 @@ void buildObjFile(char** data, int* cols, int numLines)
             fprintf(outputFile,"00");
             char* startAddr = malloc(sizeof(char) * 4);
             char* endAddr = malloc(sizeof(char) * 4);
-            for(int i = 0; i < 4; i++)
+            int i;
+            for(i = 0; i < 4; i++)
             {
                 startAddr[i] = data[lineNum][i];
                 if(i != 3)
@@ -819,7 +823,8 @@ void buildObjFile(char** data, int* cols, int numLines)
             int ans = start + end;
             fprintf(outputFile,"%04X",ans);
             fprintf(outputFile,"05+");
-            for(int i = 8; data[0][i] != ' '; i++)
+            int i;
+            for(i = 8; data[0][i] != ' '; i++)
             {
                 fprintf(outputFile,"%c",data[0][i]);
             }
@@ -835,7 +840,8 @@ void buildObjFile(char** data, int* cols, int numLines)
                     fprintf(outputFile,"00");
                     char* startAddr = malloc(sizeof(char) * 4);
                     char* endAddr = malloc(sizeof(char) * 4);
-                    for(int i = 0; i < 4; i++)
+                    int i;
+                    for(i = 0; i < 4; i++)
                     {
                         startAddr[i] = data[lineNum][i];
                         if(i != 3)
