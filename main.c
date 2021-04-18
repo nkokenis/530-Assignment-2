@@ -30,7 +30,7 @@ void assemble(char* listingFilePath);
  * The buildSymTab function is responsible for reading the 2d array
  * from the assemble function and creating an ESTAB
  */
-void buildSymTab(char** data, int* cols, int numLines);
+void buildSymTab(char** data, int* cols, int numLines, char* listingFilePath);
 
 /**
  * Function Name:
@@ -40,7 +40,7 @@ void buildSymTab(char** data, int* cols, int numLines);
  * The buildObjFile function is responsible for reading the 2d array
  * from the assemble function and creating the object file (records)
  */
-void buildObjFile(char** data, int* cols, int numLines);
+void buildObjFile(char** data, int* cols, int numLines, char* listingFilePath);
 
 
 
@@ -189,19 +189,24 @@ void assemble(char* listingFilePath)
     }
 
     //Calls our "Build Symbol Table" and "Build Object File" functions
-    buildSymTab(data, cols, numLines);
-    buildObjFile(data, cols, numLines);
+    buildSymTab(data, cols, numLines, listingFilePath);
+    buildObjFile(data, cols, numLines, listingFilePath);
 
     //Frees the allocated memory of our arrays
     free(data);
     free(cols);
 }
 
-void buildSymTab(char** data, int* cols, int numLines)
+void buildSymTab(char** data, int* cols, int numLines, char* listingFilePath)
 {
+    char* temp;
+    temp = strchr(listingFilePath, '.');
+    *temp = '\0';
+    strcat(listingFilePath, ".st");
+
     //Creates a file pointer for our output
     FILE *outputFile;
-    outputFile = fopen("output.st","w");
+    outputFile = fopen(listingFilePath,"w");
 
     //Keeps track of the line number and index position within the line
     int lineNum = 0;
@@ -358,11 +363,16 @@ void buildSymTab(char** data, int* cols, int numLines)
     fclose(outputFile);
 }
 
-void buildObjFile(char** data, int* cols, int numLines)
+void buildObjFile(char** data, int* cols, int numLines, char* listingFilePath)
 {
+    char* temp;
+    temp = strchr(listingFilePath, '.');
+    *temp = '\0';
+    strcat(listingFilePath, ".obj");
+
     //Creates a file pointer for our output
     FILE *outputFile;
-    outputFile = fopen("output.obj","w");
+    outputFile = fopen(listingFilePath,"w");
 
     //Keeps track of the line number and index position within the file
     int lineNum = 0;
@@ -823,7 +833,6 @@ void buildObjFile(char** data, int* cols, int numLines)
             int ans = start + end;
             fprintf(outputFile,"%04X",ans);
             fprintf(outputFile,"05+");
-            int i;
             for(i = 8; data[0][i] != ' '; i++)
             {
                 fprintf(outputFile,"%c",data[0][i]);
